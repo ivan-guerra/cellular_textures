@@ -2,6 +2,8 @@
 
 #include <cstddef>
 #include <expected>
+#include <filesystem>
+#include <span>
 #include <vector>
 
 namespace ctext {
@@ -26,5 +28,8 @@ struct Pixel {
 };
 
 PixelVect CreateTexture(const TextureConfig& conf);
+
+void WriteToPng(const TextureConfig& conf, const std::span<const Pixel> pixels,
+                const std::filesystem::path& outfile);
 
 }  // namespace ctext

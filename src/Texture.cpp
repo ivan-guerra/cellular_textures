@@ -1,6 +1,9 @@
 #include "Texture.h"
 
 #include <algorithm>
+#include <boost/gil.hpp>
+#include <boost/gil/extension/io/png.hpp>
+#include <boost/gil/typedefs.hpp>
 #include <cmath>
 #include <limits>
 #include <random>
@@ -66,6 +69,21 @@ PixelVect CreateTexture(const TextureConfig& conf) {
   }
 
   return pixels;
+}
+
+void WriteToPng(const TextureConfig& conf, const std::span<const Pixel> pixels,
+                const std::filesystem::path& outfile) {
+  boost::gil::gray8_image_t img(conf.dim.width, conf.dim.height);
+
+  constexpr auto kGrayscaleMax = 255u;
+  auto output_view = boost::gil::view(img);
+  for (const Pixel& p : pixels) {
+    output_view(p.col, p.row) =
+        boost::gil::gray8_pixel_t(p.color * kGrayscaleMax);
+  }
+
+  boost::gil::write_view(outfile, boost::gil::const_view(img),
+                         boost::gil::png_tag{});
 }
 
 }  // namespace ctext
