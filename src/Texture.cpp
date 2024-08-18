@@ -63,9 +63,10 @@ PixelVect CreateTexture(const TextureConfig& conf) {
     }
   }
 
-  // TODO(ieg): Make it a config option to invert the color.
   for (Pixel& p : pixels) {
-    p.color = (distances[p.row][p.col] - mindist) / (maxdist - mindist);
+    const float color =
+        (distances[p.row][p.col] - mindist) / (maxdist - mindist);
+    p.color = (conf.invert_colors) ? (1 - color) : color;
   }
 
   return pixels;

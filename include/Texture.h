@@ -18,7 +18,8 @@ struct Dimension2D {
 
 struct TextureConfig {
   Dimension2D dim;
-  size_t num_points;
+  size_t num_points = 0;
+  bool invert_colors = false;
 };
 
 struct Pixel {
