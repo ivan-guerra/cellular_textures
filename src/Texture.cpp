@@ -9,6 +9,7 @@
 #include <random>
 #include <span>
 #include <unordered_map>
+#include <utility>
 
 namespace ctext {
 
@@ -20,16 +21,60 @@ static int GetRandNum(int min, int max) {
   return distr(gen);
 }
 
-static float DistToNearestPoint(const Pixel& pixel,
-                                const std::span<const Point2D> points) {
+static float Distance(float x1, float y1, float x2, float y2) {
+  float xterm = (x1 - x2) * (x1 - x2);
+  float yterm = (y1 - y2) * (y1 - y2);
+  return std::sqrt(xterm + yterm);
+}
+
+static std::pair<float, float> DistToNearestTwoPoints(
+    const Pixel& pixel, const std::span<const Point2D> points) {
+  float mindist1 = std::numeric_limits<float>::max();
+  float mindist2 = std::numeric_limits<float>::max();
+  for (const auto& point : points) {
+    float dist = Distance(pixel.row, pixel.col, point.x, point.y);
+    if (dist < mindist2) {
+      mindist2 = dist;
+      if (mindist2 < mindist1) {
+        std::swap(mindist2, mindist1);
+      }
+    }
+  }
+  return {mindist1, mindist2};
+}
+
+float DistToNearestPoint(const Pixel& pixel,
+                         const std::span<const Point2D> points) {
+  if (points.empty()) {
+    return 1.f;
+  }
+
   float mindist = std::numeric_limits<float>::max();
   for (const auto& point : points) {
-    float x2 = (point.x - pixel.row) * (point.x - pixel.row);
-    float y2 = (point.y - pixel.col) * (point.y - pixel.col);
-    float dist = std::sqrt(x2 + y2);
+    float dist = Distance(pixel.row, pixel.col, point.x, point.y);
     mindist = std::min(dist, mindist);
   }
   return mindist;
+}
+
+float DistToNearestTwoPointsDelta(const Pixel& pixel,
+                                  const std::span<const Point2D> points) {
+  if (points.size() <= 1) {
+    return 1.f;
+  }
+
+  const auto mindists = DistToNearestTwoPoints(pixel, points);
+  return (mindists.second - mindists.first);
+}
+
+float DistToNearestTwoPointsProduct(const Pixel& pixel,
+                                    const std::span<const Point2D> points) {
+  if (points.size() <= 1) {
+    return 1.f;
+  }
+
+  const auto mindists = DistToNearestTwoPoints(pixel, points);
+  return (mindists.first * mindists.second);
 }
 
 PixelVect CreateTexture(const TextureConfig& conf) {
@@ -49,10 +94,7 @@ PixelVect CreateTexture(const TextureConfig& conf) {
     for (size_t j = 0; j < conf.dim.width; ++j) {
       pixels.push_back({.row = i, .col = j, .color = 0});
 
-      float distance = DistToNearestPoint(pixels.back(), points);
-      // TODO(ieg): The formula used to populate the distance buffer controls
-      // much of how the final texture looks. A future revision should make this
-      // formula configurable.
+      float distance = conf.GetDist(pixels.back(), points);
       distances[i][j] = distance;
       mindist = std::min(distance, mindist);
       maxdist = std::max(distance, maxdist);
