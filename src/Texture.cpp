@@ -5,6 +5,7 @@
 #include <boost/gil/extension/io/png.hpp>
 #include <boost/gil/typedefs.hpp>
 #include <cmath>
+#include <cstdlib>
 #include <limits>
 #include <random>
 #include <span>
@@ -27,12 +28,32 @@ static float Distance(float x1, float y1, float x2, float y2) {
   return std::sqrt(xterm + yterm);
 }
 
+static float DistanceWrapped(float x1, float y1, float x2, float y2,
+                             const Dimension2D& dim) {
+  float dx = std::abs(x1 - x2);
+  float dy = std::abs(y1 - y2);
+  if (dx > (dim.width / 2.f)) {
+    dx = dim.width - dx;
+  }
+  if (dy > (dim.height / 2.f)) {
+    dy = dim.height - dy;
+  }
+  return std::sqrt((dx * dx) + (dy * dy));
+}
+
 static std::pair<float, float> DistToNearestTwoPoints(
-    const Pixel& pixel, const std::span<const Point2D> points) {
+    const Pixel& pixel, const std::span<const Point2D> points,
+    const TextureConfig& conf) {
   float mindist1 = std::numeric_limits<float>::max();
   float mindist2 = std::numeric_limits<float>::max();
   for (const auto& point : points) {
-    float dist = Distance(pixel.row, pixel.col, point.x, point.y);
+    float dist = 0.f;
+    if (conf.is_tiled) {
+      dist = DistanceWrapped(pixel.row, pixel.col, point.x, point.y, conf.dim);
+    } else {
+      dist = Distance(pixel.row, pixel.col, point.x, point.y);
+    }
+
     if (dist < mindist2) {
       mindist2 = dist;
       if (mindist2 < mindist1) {
@@ -44,36 +65,44 @@ static std::pair<float, float> DistToNearestTwoPoints(
 }
 
 float DistToNearestPoint(const Pixel& pixel,
-                         const std::span<const Point2D> points) {
+                         const std::span<const Point2D> points,
+                         const TextureConfig& conf) {
   if (points.empty()) {
     return 1.f;
   }
 
   float mindist = std::numeric_limits<float>::max();
   for (const auto& point : points) {
-    float dist = Distance(pixel.row, pixel.col, point.x, point.y);
+    float dist = 0.f;
+    if (conf.is_tiled) {
+      dist = DistanceWrapped(pixel.row, pixel.col, point.x, point.y, conf.dim);
+    } else {
+      dist = Distance(pixel.row, pixel.col, point.x, point.y);
+    }
     mindist = std::min(dist, mindist);
   }
   return mindist;
 }
 
 float DistToNearestTwoPointsDelta(const Pixel& pixel,
-                                  const std::span<const Point2D> points) {
+                                  const std::span<const Point2D> points,
+                                  const TextureConfig& conf) {
   if (points.size() <= 1) {
     return 1.f;
   }
 
-  const auto mindists = DistToNearestTwoPoints(pixel, points);
+  const auto mindists = DistToNearestTwoPoints(pixel, points, conf);
   return (mindists.second - mindists.first);
 }
 
 float DistToNearestTwoPointsProduct(const Pixel& pixel,
-                                    const std::span<const Point2D> points) {
+                                    const std::span<const Point2D> points,
+                                    const TextureConfig& conf) {
   if (points.size() <= 1) {
     return 1.f;
   }
 
-  const auto mindists = DistToNearestTwoPoints(pixel, points);
+  const auto mindists = DistToNearestTwoPoints(pixel, points, conf);
   return (mindists.first * mindists.second);
 }
 
@@ -94,7 +123,7 @@ PixelVect CreateTexture(const TextureConfig& conf) {
     for (size_t j = 0; j < conf.dim.width; ++j) {
       pixels.push_back({.row = i, .col = j, .color = 0});
 
-      float distance = conf.GetDist(pixels.back(), points);
+      float distance = conf.GetDist(pixels.back(), points, conf);
       distances[i][j] = distance;
       mindist = std::min(distance, mindist);
       maxdist = std::max(distance, maxdist);

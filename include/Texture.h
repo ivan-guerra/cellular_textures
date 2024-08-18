@@ -15,8 +15,9 @@ using PixelVect = std::vector<Pixel>;
 struct Point2D;
 using PointVect = std::vector<Point2D>;
 
-using DistFunc =
-    std::function<float(const Pixel&, const std::span<const Point2D>)>;
+struct TextureConfig;
+using DistFunc = std::function<float(
+    const Pixel&, const std::span<const Point2D>, const TextureConfig&)>;
 
 struct Dimension2D {
   size_t width = 0;
@@ -27,6 +28,7 @@ struct TextureConfig {
   Dimension2D dim;
   size_t num_points = 0;
   bool invert_colors = false;
+  bool is_tiled = false;
   DistFunc GetDist;
 };
 
@@ -42,11 +44,14 @@ struct Point2D {
 };
 
 float DistToNearestPoint(const Pixel& pixel,
-                         const std::span<const Point2D> points);
+                         const std::span<const Point2D> points,
+                         const TextureConfig& conf);
 float DistToNearestTwoPointsDelta(const Pixel& pixel,
-                                  const std::span<const Point2D> points);
+                                  const std::span<const Point2D> points,
+                                  const TextureConfig& conf);
 float DistToNearestTwoPointsProduct(const Pixel& pixel,
-                                    const std::span<const Point2D> points);
+                                    const std::span<const Point2D> points,
+                                    const TextureConfig& conf);
 
 PixelVect CreateTexture(const TextureConfig& conf);
 
