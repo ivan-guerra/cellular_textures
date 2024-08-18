@@ -21,13 +21,11 @@ static int GetRandNum(int min, int max) {
 }
 
 static float DistToNearestPoint(const Pixel& pixel,
-                                const std::span<const float> xcoords,
-                                const std::span<const float> ycoords,
-                                size_t num_points) {
+                                const std::span<const Point2D> points) {
   float mindist = std::numeric_limits<float>::max();
-  for (size_t i = 0; i < num_points; ++i) {
-    float x2 = (xcoords[i] - pixel.row) * (xcoords[i] - pixel.row);
-    float y2 = (ycoords[i] - pixel.col) * (ycoords[i] - pixel.col);
+  for (const auto& point : points) {
+    float x2 = (point.x - pixel.row) * (point.x - pixel.row);
+    float y2 = (point.y - pixel.col) * (point.y - pixel.col);
     float dist = std::sqrt(x2 + y2);
     mindist = std::min(dist, mindist);
   }
@@ -35,11 +33,10 @@ static float DistToNearestPoint(const Pixel& pixel,
 }
 
 PixelVect CreateTexture(const TextureConfig& conf) {
-  std::vector<float> xcoords(conf.num_points, 0.f);
-  std::vector<float> ycoords(conf.num_points, 0.f);
+  PointVect points(conf.num_points);
   for (size_t i = 0; i < conf.num_points; ++i) {
-    xcoords[i] = GetRandNum(1, conf.dim.width - 1);
-    ycoords[i] = GetRandNum(1, conf.dim.height - 1);
+    points[i].x = GetRandNum(1, conf.dim.width - 1);
+    points[i].y = GetRandNum(1, conf.dim.height - 1);
   }
 
   using DistanceBuffer =
@@ -52,8 +49,7 @@ PixelVect CreateTexture(const TextureConfig& conf) {
     for (size_t j = 0; j < conf.dim.width; ++j) {
       pixels.push_back({.row = i, .col = j, .color = 0});
 
-      float distance =
-          DistToNearestPoint(pixels.back(), xcoords, ycoords, conf.num_points);
+      float distance = DistToNearestPoint(pixels.back(), points);
       // TODO(ieg): The formula used to populate the distance buffer controls
       // much of how the final texture looks. A future revision should make this
       // formula configurable.
