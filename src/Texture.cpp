@@ -9,6 +9,7 @@
 #include <limits>
 #include <random>
 #include <span>
+#include <string>
 #include <unordered_map>
 #include <utility>
 
@@ -64,9 +65,9 @@ static std::pair<float, float> DistToNearestTwoPoints(
   return {mindist1, mindist2};
 }
 
-float DistToNearestPoint(const Pixel& pixel,
-                         const std::span<const Point2D> points,
-                         const TextureConfig& conf) {
+float distfunc::DistToNearestPoint(const Pixel& pixel,
+                                   const std::span<const Point2D> points,
+                                   const TextureConfig& conf) {
   if (points.empty()) {
     return 1.f;
   }
@@ -84,9 +85,9 @@ float DistToNearestPoint(const Pixel& pixel,
   return mindist;
 }
 
-float DistToNearestTwoPointsDelta(const Pixel& pixel,
-                                  const std::span<const Point2D> points,
-                                  const TextureConfig& conf) {
+float distfunc::DistToNearestTwoPointsDelta(
+    const Pixel& pixel, const std::span<const Point2D> points,
+    const TextureConfig& conf) {
   if (points.size() <= 1) {
     return 1.f;
   }
@@ -95,9 +96,9 @@ float DistToNearestTwoPointsDelta(const Pixel& pixel,
   return (mindists.second - mindists.first);
 }
 
-float DistToNearestTwoPointsProduct(const Pixel& pixel,
-                                    const std::span<const Point2D> points,
-                                    const TextureConfig& conf) {
+float distfunc::DistToNearestTwoPointsProduct(
+    const Pixel& pixel, const std::span<const Point2D> points,
+    const TextureConfig& conf) {
   if (points.size() <= 1) {
     return 1.f;
   }
@@ -123,7 +124,8 @@ PixelVect CreateTexture(const TextureConfig& conf) {
     for (size_t j = 0; j < conf.dim.width; ++j) {
       pixels.push_back({.row = i, .col = j, .color = 0});
 
-      float distance = conf.GetDist(pixels.back(), points, conf);
+      float distance =
+          distfunc::kFuncTable[conf.metric](pixels.back(), points, conf);
       distances[i][j] = distance;
       mindist = std::min(distance, mindist);
       maxdist = std::max(distance, maxdist);
@@ -152,6 +154,21 @@ void WriteToPng(const TextureConfig& conf, const std::span<const Pixel> pixels,
 
   boost::gil::write_view(outfile, boost::gil::const_view(img),
                          boost::gil::png_tag{});
+}
+
+std::istream& operator>>(std::istream& in, DistMetric& metric) {
+  std::string token;
+  in >> token;
+  if (token == "0") {
+    metric = DistMetric::DistToNearestPoint;
+  } else if (token == "1") {
+    metric = DistMetric::DistToNearestTwoPointsDelta;
+  } else if (token == "2") {
+    metric = DistMetric::DistToNearestTwoPointsProduct;
+  } else {
+    in.setstate(std::ios_base::failbit);
+  }
+  return in;
 }
 
 }  // namespace ctext
