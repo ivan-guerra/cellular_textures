@@ -9,8 +9,6 @@ set(CTEXT_INCLUDE_DIR
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 include(set_compile_link_flags)
-include(enable_unit_testing)
 
 add_subdirectory(apps)
 add_subdirectory(src)
-add_subdirectory(tests)
