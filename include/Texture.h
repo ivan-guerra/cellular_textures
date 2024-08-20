@@ -10,13 +10,6 @@
 
 namespace ctext {
 
-struct TextureConfig;
-using DistFunc =
-    std::function<double(const Pixel&, const TwoDTree&, const TextureConfig&)>;
-
-constexpr size_t kTotalDistFuncs = 3;
-using DistFuncTable = std::array<DistFunc, kTotalDistFuncs>;
-
 enum DistMetric {
   DistToNearestPoint = 0,
   DistToNearestTwoPointsDelta,
@@ -31,7 +24,20 @@ struct TextureConfig {
   DistMetric metric = DistMetric::DistToNearestPoint;
 };
 
+PixelVect CreateTexture(const TextureConfig& conf);
+
+void WriteToPng(const TextureConfig& conf, const std::span<const Pixel> pixels,
+                const std::filesystem::path& outfile);
+
+std::istream& operator>>(std::istream& in, DistMetric& metric);
+
 namespace distfunc {
+
+constexpr size_t kTotalDistFuncs = 3;
+
+using DistFunc =
+    std::function<double(const Pixel&, const TwoDTree&, const TextureConfig&)>;
+using DistFuncTable = std::array<DistFunc, kTotalDistFuncs>;
 
 double DistToNearestPoint(const Pixel& pixel, const TwoDTree& points,
                           const TextureConfig& conf);
@@ -47,12 +53,5 @@ const DistFuncTable kFuncTable = {
 };
 
 }  // namespace distfunc
-
-PixelVect CreateTexture(const TextureConfig& conf);
-
-void WriteToPng(const TextureConfig& conf, const std::span<const Pixel> pixels,
-                const std::filesystem::path& outfile);
-
-std::istream& operator>>(std::istream& in, DistMetric& metric);
 
 }  // namespace ctext
