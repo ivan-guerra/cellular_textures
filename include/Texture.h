@@ -6,14 +6,13 @@
 #include <istream>
 #include <span>
 
-#include "TwoDTree.h"
 #include "Types.h"
 
 namespace ctext {
 
 struct TextureConfig;
 using DistFunc =
-    std::function<float(const Pixel&, const TwoDTree&, const TextureConfig&)>;
+    std::function<double(const Pixel&, const TwoDTree&, const TextureConfig&)>;
 
 constexpr size_t kTotalDistFuncs = 3;
 using DistFuncTable = std::array<DistFunc, kTotalDistFuncs>;
@@ -34,12 +33,12 @@ struct TextureConfig {
 
 namespace distfunc {
 
-float DistToNearestPoint(const Pixel& pixel, const TwoDTree& points,
-                         const TextureConfig& conf);
-float DistToNearestTwoPointsDelta(const Pixel& pixel, const TwoDTree& points,
-                                  const TextureConfig& conf);
-float DistToNearestTwoPointsProduct(const Pixel& pixel, const TwoDTree& points,
-                                    const TextureConfig& conf);
+double DistToNearestPoint(const Pixel& pixel, const TwoDTree& points,
+                          const TextureConfig& conf);
+double DistToNearestTwoPointsDelta(const Pixel& pixel, const TwoDTree& points,
+                                   const TextureConfig& conf);
+double DistToNearestTwoPointsProduct(const Pixel& pixel, const TwoDTree& points,
+                                     const TextureConfig& conf);
 
 const DistFuncTable kFuncTable = {
     DistToNearestPoint,

@@ -15,125 +15,121 @@
 #include <unordered_map>
 #include <utility>
 
-#include "TwoDTree.h"
-
 namespace ctext {
 
-static int GetRandNum(int min, int max) {
+static double GetRandNum(int min, int max) {
   // https://stackoverflow.com/questions/7560114/random-number-c-in-some-range
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_int_distribution<> distr(min, max);
+  std::uniform_real_distribution<> distr(min, max);
   return distr(gen);
 }
 
-static float Distance(float x1, float y1, float x2, float y2) {
-  float xterm = (x1 - x2) * (x1 - x2);
-  float yterm = (y1 - y2) * (y1 - y2);
+static double Distance(double x1, double y1, double x2, double y2) {
+  double xterm = (x1 - x2) * (x1 - x2);
+  double yterm = (y1 - y2) * (y1 - y2);
   return std::sqrtf(xterm + yterm);
 }
 
-static float DistanceWrapped(float x1, float y1, float x2, float y2,
-                             const Dimension2D& dim) {
-  float dx = std::abs(x1 - x2);
-  float dy = std::abs(y1 - y2);
-  if (dx > (dim.width / 2.f)) {
+static double DistanceWrapped(double x1, double y1, double x2, double y2,
+                              const Dimension2D& dim) {
+  double dx = std::abs(x1 - x2);
+  double dy = std::abs(y1 - y2);
+  if (dx > (dim.width / 2.0)) {
     dx = dim.width - dx;
   }
-  if (dy > (dim.height / 2.f)) {
+  if (dy > (dim.height / 2.0)) {
     dy = dim.height - dy;
   }
   return std::sqrt((dx * dx) + (dy * dy));
 }
 
-static std::pair<float, float> DistToNearestTwoPoints(
+static std::pair<double, double> DistToNearestTwoPoints(
     const Pixel& pixel, const TwoDTree& points, const TextureConfig& conf) {
-  const auto nearest_neighbors = points.FindNNearestNeighbors(
-      {
-          .x = static_cast<float>(pixel.row),
-          .y = static_cast<float>(pixel.col),
-      },
-      2);
+  const Point query = {static_cast<double>(pixel.row),
+                       static_cast<double>(pixel.col)};
+  std::vector<const Point*> result;
+  points.knearest(query, 2, result);
 
-  if (nearest_neighbors.size() < 2) {
-    throw std::runtime_error(std::format(
-        "could not find two points near target pixel, row={} col={}", pixel.row,
-        pixel.col));
+  if (result.size() < 2) {
+    throw std::runtime_error(
+        std::format("could not find two points near target pixel ({}, {})",
+                    pixel.row, pixel.col));
   }
 
-  const Point2D& closest1 = nearest_neighbors[0];
-  const Point2D& closest2 = nearest_neighbors[1];
-  float mindist1 = 0.f;
-  float mindist2 = 0.f;
+  const Point* closest1 = result[0];
+  const Point* closest2 = result[1];
+  double mindist1 = 0.0;
+  double mindist2 = 0.0;
   if (conf.is_tiled) {
-    mindist1 =
-        DistanceWrapped(pixel.row, pixel.col, closest1.x, closest1.y, conf.dim);
-    mindist2 =
-        DistanceWrapped(pixel.row, pixel.col, closest2.x, closest2.y, conf.dim);
+    mindist1 = DistanceWrapped(pixel.row, pixel.col, closest1->x(),
+                               closest1->y(), conf.dim);
+    mindist2 = DistanceWrapped(pixel.row, pixel.col, closest2->x(),
+                               closest2->y(), conf.dim);
   } else {
-    mindist1 = Distance(pixel.row, pixel.col, closest1.x, closest1.y);
-    mindist2 = Distance(pixel.row, pixel.col, closest2.x, closest2.y);
+    mindist1 = Distance(pixel.row, pixel.col, closest1->x(), closest1->y());
+    mindist2 = Distance(pixel.row, pixel.col, closest2->x(), closest2->y());
   }
   return {mindist1, mindist2};
 }
 
-float distfunc::DistToNearestPoint(const Pixel& pixel, const TwoDTree& points,
-                                   const TextureConfig& conf) {
-  const auto nearest_neighbors = points.FindNNearestNeighbors(
-      {
-          .x = static_cast<float>(pixel.row),
-          .y = static_cast<float>(pixel.col),
-      },
-      1);
+double distfunc::DistToNearestPoint(const Pixel& pixel, const TwoDTree& points,
+                                    const TextureConfig& conf) {
+  const Point query = {static_cast<double>(pixel.row),
+                       static_cast<double>(pixel.col)};
+  std::vector<const Point*> result;
+  points.knearest(query, 1, result);
 
-  if (nearest_neighbors.empty()) {
-    throw std::runtime_error(std::format(
-        "could not find any points near target pixel, row={} col={}", pixel.row,
-        pixel.col));
+  if (result.empty()) {
+    throw std::runtime_error(
+        std::format("could not find any points near target pixel ({}, {})",
+                    pixel.row, pixel.col));
   }
 
-  const Point2D& closest = nearest_neighbors.front();
+  const Point* closest = result.front();
   if (conf.is_tiled) {
-    return DistanceWrapped(pixel.row, pixel.col, closest.x, closest.y,
+    return DistanceWrapped(pixel.row, pixel.col, closest->x(), closest->y(),
                            conf.dim);
   } else {
-    return Distance(pixel.row, pixel.col, closest.x, closest.y);
+    return Distance(pixel.row, pixel.col, closest->x(), closest->y());
   }
 }
 
-float distfunc::DistToNearestTwoPointsDelta(const Pixel& pixel,
-                                            const TwoDTree& points,
-                                            const TextureConfig& conf) {
+double distfunc::DistToNearestTwoPointsDelta(const Pixel& pixel,
+                                             const TwoDTree& points,
+                                             const TextureConfig& conf) {
   const auto mindists = DistToNearestTwoPoints(pixel, points, conf);
-  return std::fabs(mindists.first - mindists.second);
+  return std::abs(mindists.first - mindists.second);
 }
 
-float distfunc::DistToNearestTwoPointsProduct(const Pixel& pixel,
-                                              const TwoDTree& points,
-                                              const TextureConfig& conf) {
+double distfunc::DistToNearestTwoPointsProduct(const Pixel& pixel,
+                                               const TwoDTree& points,
+                                               const TextureConfig& conf) {
   const auto mindists = DistToNearestTwoPoints(pixel, points, conf);
   return (mindists.first * mindists.second);
 }
 
 PixelVect CreateTexture(const TextureConfig& conf) {
+  TwoDTree tree;
   PointVect points(conf.num_points);
   for (size_t i = 0; i < conf.num_points; ++i) {
-    points[i].x = GetRandNum(1, conf.dim.width - 1);
-    points[i].y = GetRandNum(1, conf.dim.height - 1);
+    points[i] = {GetRandNum(1, conf.dim.width - 1),
+                 GetRandNum(1, conf.dim.height - 1)};
+    tree.add(&points[i], &points[i]);
   }
+  tree.build();
 
   using DistanceBuffer =
-      std::unordered_map<size_t, std::unordered_map<size_t, float>>;
+      std::unordered_map<size_t, std::unordered_map<size_t, double>>;
   DistanceBuffer distances;
   PixelVect pixels;
-  TwoDTree tree(points);
-  float mindist = std::numeric_limits<float>::max();
-  float maxdist = 0.f;
+  double mindist = std::numeric_limits<double>::max();
+  double maxdist = 0.0;
   for (size_t i = 0; i < conf.dim.height; ++i) {
     for (size_t j = 0; j < conf.dim.width; ++j) {
       pixels.push_back({.row = i, .col = j, .color = 0});
 
-      float distance =
+      double distance =
           distfunc::kFuncTable[conf.metric](pixels.back(), tree, conf);
       distances[i][j] = distance;
       mindist = std::min(distance, mindist);
@@ -142,7 +138,7 @@ PixelVect CreateTexture(const TextureConfig& conf) {
   }
 
   for (Pixel& p : pixels) {
-    const float color =
+    const double color =
         (distances[p.row][p.col] - mindist) / (maxdist - mindist);
     p.color = (conf.invert_colors) ? (1 - color) : color;
   }

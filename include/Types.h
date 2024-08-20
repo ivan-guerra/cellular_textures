@@ -1,15 +1,18 @@
 #pragma once
 
+#include <boost/geometry/geometries/point_xy.hpp>
 #include <cstddef>
 #include <vector>
 
+#include "kdtree.h"
+
 namespace ctext {
 
+using Point = boost::geometry::model::d2::point_xy<double>;
+using TwoDTree = spatial_index::kdtree<Point>;
 struct Pixel;
 using PixelVect = std::vector<Pixel>;
-
-struct Point2D;
-using PointVect = std::vector<Point2D>;
+using PointVect = std::vector<Point>;
 
 struct Dimension2D {
   size_t width = 0;
@@ -19,12 +22,7 @@ struct Dimension2D {
 struct Pixel {
   size_t row = 0;
   size_t col = 0;
-  float color = 0.f;
-};
-
-struct Point2D {
-  float x = 0.f;
-  float y = 0.f;
+  double color = 0.0;
 };
 
 }  // namespace ctext

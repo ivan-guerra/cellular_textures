@@ -8,7 +8,13 @@ project(
 
 add_library(${PROJECT_NAME} STATIC)
 
-target_sources(${PROJECT_NAME} PRIVATE Texture.cpp TwoDTree.cpp)
+target_sources(${PROJECT_NAME} PRIVATE Texture.cpp)
+
+# Had to disable a number of warnings to be able to compile with the third party
+# kdtree.h
+target_compile_options(
+  ${PROJECT_NAME} PUBLIC -Wno-unused-parameter -Wno-return-type
+                         -Wno-deprecated-declarations)
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${CTEXT_INCLUDE_DIR})
 
