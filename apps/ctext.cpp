@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <exception>
 #include <iostream>
+#include <string>
 #include <string_view>
 
 #include "Texture.h"
@@ -29,24 +30,27 @@ int main(int argc, char** argv) {
         po::value<bool>(&conf.invert_colors)->implicit_value(true),
         "invert-pixel-color")
       ("enable-tiling,t",
-        po::value<bool>(&conf.is_tiled)->implicit_value(true), 
+        po::value<bool>(&conf.is_tiled)->implicit_value(true),
         "tile textures")
-      ("dist-func,d", 
-        po::value<ctext::DistMetric>(&conf.metric)->default_value(
-          ctext::DistMetric::DistToNearestPoint),
-        "set the distance metric: \n"
-        "0) DistToNearestPoint\n"
-        "1) DistToNearestTwoPointsDelta\n"
-        "2) DistToNearestTwoPointsProduct");
+      ("num-neighbors,k",
+       po::value<size_t>(&conf.num_neighbors)->default_value(1),
+       "number of neighboring texture points to consider at each pixel")
+      ("dist-op,d",
+        po::value<ctext::DistOp>(&conf.op)->default_value(
+          ctext::DistOp::kAdd),
+        "operation applied to all neighboring point distances: \n"
+        "+) Add\n"
+        "-) Subtract\n"
+        "*) Multiply");
 
     po::options_description positional_opts("Positional options");
     positional_opts.add_options()
-      ("width", 
+      ("width",
         po::value<size_t>(&conf.dim.width),
         "image width")
       ("height", po::value<size_t>(&conf.dim.height), "image height")
-      ("filepath", 
-        po::value<std::filesystem::path>(&filepath), 
+      ("filepath",
+        po::value<std::filesystem::path>(&filepath),
         "output PNG filepath");
     /* clang-format on */
 
