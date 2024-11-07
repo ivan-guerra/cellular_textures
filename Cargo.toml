@@ -5,4 +5,11 @@ edition = "2021"
 description = "Generate cellular texture grayscale images."
 license = "Unlicense"
 
+[[bin]]
+name = "ctext"
+path = "src/main.rs"
+
 [dependencies]
+kd-tree = "0.6.0"
+typenum ="1.17.0"
+rand = "0.8.5"
