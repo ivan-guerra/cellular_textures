@@ -59,11 +59,17 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let _config = Config::new(
+    let config = Config::new(
         ImageDimensions::new(args.width, args.height),
         args.invert_colors,
-        args.num_texture_points,
         args.num_neighbors,
+        args.num_texture_points,
         args.dist_op,
+        args.output_file.into(),
     );
+
+    if let Err(e) = cellular_textures::run(&config) {
+        eprintln!("error: {}", e);
+        std::process::exit(1);
+    }
 }

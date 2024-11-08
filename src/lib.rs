@@ -1,10 +1,12 @@
 use clap::ValueEnum;
+use image::{GrayImage, Luma};
 use kd_tree::KdPoint;
 use rand::{thread_rng, Rng};
 use std::convert::TryFrom;
 use std::error::Error;
+use std::path::PathBuf;
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
+#[derive(Clone, Debug, ValueEnum)]
 pub enum DistanceOperation {
     Add,
     Subtract,
@@ -29,6 +31,7 @@ pub struct Config {
     pub num_neighbors: u32,
     pub num_texture_points: u32,
     pub dist_op: DistanceOperation,
+    pub output_file: PathBuf,
 }
 
 impl Config {
@@ -38,6 +41,7 @@ impl Config {
         num_neighbors: u32,
         num_texture_points: u32,
         dist_op: DistanceOperation,
+        output_file: PathBuf,
     ) -> Config {
         Config {
             dimensions,
@@ -45,17 +49,18 @@ impl Config {
             num_neighbors,
             num_texture_points,
             dist_op,
+            output_file,
         }
     }
 }
 
 pub struct Pixel {
-    pub location: [u32; 2],
+    pub location: [i32; 2],
     pub grayscale: u8,
 }
 
 impl Pixel {
-    pub fn new(location: [u32; 2], grayscale: u8) -> Pixel {
+    pub fn new(location: [i32; 2], grayscale: u8) -> Pixel {
         Pixel {
             location,
             grayscale,
@@ -77,10 +82,10 @@ impl Pixel {
 }
 
 impl KdPoint for Pixel {
-    type Scalar = u32;
+    type Scalar = i32;
     type Dim = typenum::U2;
 
-    fn at(&self, k: usize) -> u32 {
+    fn at(&self, k: usize) -> i32 {
         self.location[k]
     }
 }
@@ -94,8 +99,8 @@ struct TextureAlgoData {
 impl Default for TextureAlgoData {
     fn default() -> Self {
         TextureAlgoData {
-            min_dist: f64::NEG_INFINITY,
-            max_dist: f64::INFINITY,
+            min_dist: f64::INFINITY,
+            max_dist: f64::NEG_INFINITY,
             dist_buffer: Vec::new(),
         }
     }
@@ -104,21 +109,21 @@ impl Default for TextureAlgoData {
 fn generate_search_tree(
     num_texture_points: u32,
     dimensions: &ImageDimensions,
-) -> kd_tree::KdTree<Pixel> {
+) -> Result<kd_tree::KdTree<Pixel>, Box<dyn Error>> {
     let mut rng = thread_rng();
     let search_pixels: Vec<Pixel> = (0..num_texture_points)
         .map(|_| {
-            Pixel::new(
+            Ok(Pixel::new(
                 [
-                    rng.gen_range(0..dimensions.width),
-                    rng.gen_range(0..dimensions.height),
+                    i32::try_from(rng.gen_range(0..dimensions.width))?,
+                    i32::try_from(rng.gen_range(0..dimensions.height))?,
                 ],
                 0,
-            )
+            ))
         })
-        .collect();
+        .collect::<Result<Vec<Pixel>, Box<dyn Error>>>()?;
 
-    kd_tree::KdTree::build(search_pixels)
+    Ok(kd_tree::KdTree::build(search_pixels))
 }
 
 fn set_pixel_intensity(
@@ -145,11 +150,11 @@ fn set_pixel_intensity(
 pub fn generate_texture(config: &Config) -> Result<Vec<Pixel>, Box<dyn Error>> {
     let mut texture_data = TextureAlgoData::default();
     let mut texture_pixels = Vec::new();
-    let search_tree = generate_search_tree(config.num_texture_points, &config.dimensions);
+    let search_tree = generate_search_tree(config.num_texture_points, &config.dimensions)?;
 
     for i in 0..config.dimensions.height {
         for j in 0..config.dimensions.width {
-            let pixel = Pixel::new([i, j], 0);
+            let pixel = Pixel::new([i32::try_from(j)?, i32::try_from(i)?], 0);
             if let Some(distance) = search_tree
                 .nearests(&pixel, config.num_neighbors as usize)
                 .iter()
@@ -180,6 +185,20 @@ pub fn generate_texture(config: &Config) -> Result<Vec<Pixel>, Box<dyn Error>> {
     Ok(texture_pixels)
 }
 
+pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
+    let texture_pixels = generate_texture(config)?;
+    let mut img = GrayImage::new(config.dimensions.width, config.dimensions.height);
+
+    img.pixels_mut()
+        .zip(texture_pixels)
+        .for_each(|(pixel, texture_pixel)| {
+            *pixel = Luma([texture_pixel.grayscale]);
+        });
+    img.save(&config.output_file)?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -207,6 +226,9 @@ mod test {
     fn generate_search_tree_generates_empty_tree() {
         let dimensions = ImageDimensions::new(10, 10);
         let search_tree = generate_search_tree(0, &dimensions);
+        assert!(search_tree.is_ok());
+
+        let search_tree = search_tree.unwrap();
         assert!(search_tree.is_empty());
     }
 
@@ -214,6 +236,9 @@ mod test {
     fn generate_search_tree_generates_tree_with_size_equal_to_num_texture_points() {
         let dimensions = ImageDimensions::new(10, 10);
         let search_tree = generate_search_tree(5, &dimensions);
+        assert!(search_tree.is_ok());
+
+        let search_tree = search_tree.unwrap();
         assert_eq!(search_tree.len(), 5);
     }
 
@@ -259,6 +284,7 @@ mod test {
             1,
             0, // No texture points means there are no neighbors to search for.
             DistanceOperation::Add,
+            PathBuf::from("/foo/bar/texture.png"),
         );
         assert!(generate_texture(&config).is_err());
     }
