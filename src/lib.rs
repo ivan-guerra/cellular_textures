@@ -1,8 +1,10 @@
+use clap::ValueEnum;
 use kd_tree::KdPoint;
 use rand::{thread_rng, Rng};
 use std::convert::TryFrom;
 use std::error::Error;
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 pub enum DistanceOperation {
     Add,
     Subtract,
