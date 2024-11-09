@@ -10,6 +10,7 @@ use kd_tree::KdPoint;
 use rand::{thread_rng, Rng};
 use std::convert::TryFrom;
 use std::error::Error;
+use std::fmt;
 use std::path::PathBuf;
 
 /// Arithmetic operation to be applied to each pixel's set of distance values to neighboring
@@ -78,6 +79,22 @@ impl Config {
             dist_op,
             output_file,
         }
+    }
+}
+
+impl fmt::Display for Config {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Config {{ dimensions: {}x{}, invert_colors: {}, num_neighbors: {}, num_texture_points: {}, dist_op: {:?}, output_file: {:?} }}",
+            self.dimensions.width,
+            self.dimensions.height,
+            self.invert_colors,
+            self.num_neighbors,
+            self.num_texture_points,
+            self.dist_op,
+            self.output_file
+        )
     }
 }
 

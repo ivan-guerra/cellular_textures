@@ -15,3 +15,8 @@ typenum ="1.17.0"
 rand = "0.8.5"
 clap = {version = "4.5.20", features = ["derive"]}
 image = "0.25.4"
+criterion = "0.5.1"
+
+[[bench]]
+name = "generate_texture"
+harness = false
