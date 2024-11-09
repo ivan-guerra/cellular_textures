@@ -1,3 +1,9 @@
+//! `cellular_textures` provides a library for generating MxN, grayscale [cellular
+//! textures](https://en.wikipedia.org/wiki/Procedural_texture#Cellular_texturing). A binary,
+//! `ctext`, is also provided which allows the user to generate a visualization of a cellular
+//! texture as a grayscale image. Any [image
+//! format](https://github.com/image-rs/image/blob/main/README.md#supported-image-formats)
+//! supported by the [image] crate may be used.
 use clap::ValueEnum;
 use image::{GrayImage, Luma};
 use kd_tree::KdPoint;
@@ -6,16 +12,29 @@ use std::convert::TryFrom;
 use std::error::Error;
 use std::path::PathBuf;
 
+/// Arithmetic operation to be applied to each pixel's set of distance values to neighboring
+/// texture points.
+///
+/// As an example, consider a pixel with the following distances to its neighbors: [1.0, 2.0, 3.0].
+/// If the distance operation is set to `Add`, the final distance value for that pixel will be
+/// 1.0 + 2.0 + 3.0 = 6.0.
 #[derive(Clone, Debug, ValueEnum)]
 pub enum DistanceOperation {
+    /// Add distances.
     Add,
+    /// Subtract distances.
     Subtract,
+    /// Multiply distances.
     Multiply,
+    /// Divide distances.
     Divide,
 }
 
+/// Dimensions of an image.
 pub struct ImageDimensions {
+    /// Width of the image in pixels.
     pub width: u32,
+    /// Height of the image in pixels.
     pub height: u32,
 }
 
@@ -25,16 +44,24 @@ impl ImageDimensions {
     }
 }
 
+/// Cellular texture generation configs.
 pub struct Config {
+    /// Dimensions of the output image.
     pub dimensions: ImageDimensions,
+    /// Whether to invert the colors of the output image.
     pub invert_colors: bool,
+    /// Number of neighbors to consider per pixel.
     pub num_neighbors: u32,
+    /// Number of texture points to generate.
     pub num_texture_points: u32,
+    /// Distance operation to use during texture generation.
     pub dist_op: DistanceOperation,
+    /// Path to the output image file.
     pub output_file: PathBuf,
 }
 
 impl Config {
+    /// Creates a new `Config` instance with the specified parameters.
     pub fn new(
         dimensions: ImageDimensions,
         invert_colors: bool,
@@ -54,12 +81,16 @@ impl Config {
     }
 }
 
+/// A grayscale image pixel.
 pub struct Pixel {
+    /// Location of the pixel in the image as [x, y] coordinates.
     pub location: [i32; 2],
+    /// Grayscale value of the pixel.
     pub grayscale: u8,
 }
 
 impl Pixel {
+    /// Creates a new `Pixel` instance with the specified location and grayscale value.
     pub fn new(location: [i32; 2], grayscale: u8) -> Pixel {
         Pixel {
             location,
@@ -67,6 +98,8 @@ impl Pixel {
         }
     }
 
+    /// Computes the Euclidean distance between two pixels, taking into account wrapping about
+    /// image boundaries.
     pub fn wrapped_distance(&self, other: &Pixel, dimensions: &ImageDimensions) -> f64 {
         let dx = (f64::from(self.location[0]) - f64::from(other.location[0])).abs();
         let dy = (f64::from(self.location[1]) - f64::from(other.location[1])).abs();
@@ -147,6 +180,17 @@ fn set_pixel_intensity(
     Ok(())
 }
 
+/// Generates a cellular texture based on the provided configuration.
+///
+/// # Returns
+///
+/// A `Result` containing a vector of grayscale `Pixel` instances representing the generated texture,
+/// or an error if the texture generation fails.
+///
+/// # Errors
+///
+/// This function will return an error if it fails to find any neighbors for a pixel or if
+/// there is an issue with setting pixel intensity.
 pub fn generate_texture(config: &Config) -> Result<Vec<Pixel>, Box<dyn Error>> {
     let mut texture_data = TextureAlgoData::default();
     let mut texture_pixels = Vec::new();
@@ -185,6 +229,12 @@ pub fn generate_texture(config: &Config) -> Result<Vec<Pixel>, Box<dyn Error>> {
     Ok(texture_pixels)
 }
 
+/// Runs the cellular texture image generation process based on the provided configuration.
+///
+/// # Errors
+///
+/// This function will return an error if the texture generation fails or if there is an issue
+/// saving the output image.
 pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
     let texture_pixels = generate_texture(config)?;
     let mut img = GrayImage::new(config.dimensions.width, config.dimensions.height);
@@ -243,7 +293,7 @@ mod test {
     }
 
     #[test]
-    fn set_pixel_intensity_raises_error_when_grayscale_value_cannot_be_converted() {
+    fn set_pixel_intensity_returns_error_when_grayscale_value_cannot_be_converted() {
         let mut texture_pixels = vec![Pixel::new([0, 0], 0)];
         // The following texture_data definition guarantees the pixel intensity value will be 5.
         // When we multiply 5 * 255, we'll be outside the bounds of Pixel.grayscale field's u8
